@@ -28,6 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false);
 
   // 토큰 변경 → axios 헤더 동기화 + storage
+  // (동기 finishAuth 가 이미 axios.defaults 를 갱신하므로 여기서는 정리(logout) 케이스 위주)
   useEffect(() => {
     if (token) {
       localStorage.setItem(TOKEN_KEY, token);
@@ -43,7 +44,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     else localStorage.removeItem(USER_KEY);
   }, [user]);
 
+  // 로그인/등록 성공 시 호출 — axios 헤더와 localStorage 를 동기적으로 먼저 갱신해서
+  // 직후의 nav() 로 마운트되는 자식 페이지 useEffect 가 토큰 없이 API 를 호출하는
+  // race condition 을 방지한다 (자식 useEffect 가 부모 AuthProvider 의 useEffect 보다
+  // 먼저 실행되므로 setState 만으로는 부족함).
   const finishAuth = (data: { accessToken: string; user: User }) => {
+    try {
+      localStorage.setItem(TOKEN_KEY, data.accessToken);
+      localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+    } catch { /* storage 실패 무시 */ }
+    api.defaults.headers.common["Authorization"] = `Bearer ${data.accessToken}`;
     setToken(data.accessToken);
     setUser(data.user);
   };

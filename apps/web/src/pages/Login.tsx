@@ -26,11 +26,27 @@ export default function Login() {
       }
       nav(redirect, { replace: true });
     } catch (e: any) {
-      const msg = e?.response?.data?.error?.message
-        || e?.response?.data?.detail
-        || e?.message
-        || "오류가 발생했습니다";
-      setError(typeof msg === "string" ? msg : JSON.stringify(msg));
+      const status = e?.response?.status;
+      const data = e?.response?.data;
+      // 1) Lon API 표준 에러
+      let msg: string | null = data?.error?.message || null;
+      // 2) FastAPI 422 검증 에러 — 배열을 사람 읽기 좋은 형태로
+      if (!msg && Array.isArray(data?.detail)) {
+        msg = data.detail
+          .map((d: any) => {
+            const where = Array.isArray(d?.loc) ? d.loc.slice(1).join(".") : "input";
+            const reason = d?.msg || d?.type || "invalid";
+            return `${where}: ${reason}`;
+          })
+          .join(" / ");
+      }
+      // 3) detail 이 단일 문자열인 경우
+      if (!msg && typeof data?.detail === "string") msg = data.detail;
+      // 4) 그 외 fallback
+      if (!msg) msg = e?.message || "오류가 발생했습니다";
+      // 5) 401 일 때 익숙한 한국어 메시지로 대체
+      if (status === 401) msg = "이메일 또는 비밀번호가 올바르지 않습니다.";
+      setError(msg);
     }
   };
 
@@ -85,8 +101,10 @@ export default function Login() {
           </form>
         </div>
 
-        <div className="text-[11px] text-white/30 text-center mt-4">
-          개발용 기본 계정: smoke@example.com / secret123
+        <div className="text-[11px] text-white/30 text-center mt-4 leading-5">
+          개발용 기본 계정<br />
+          ADMIN: admin@example.com / admin1234<br />
+          USER : smoke@example.com / secret123
         </div>
       </div>
     </div>

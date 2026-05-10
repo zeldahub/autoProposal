@@ -18,6 +18,7 @@ TITLES = {
     "interface-spec.md":   ("Lon — AI 사업제안서 자동 생성기", "연계 정의서"),
     "menu-structure.md":   ("Lon — AI 사업제안서 자동 생성기", "메뉴 구성도"),
     "dev-setup-guide.md":  ("Lon — AI 사업제안서 자동 생성기", "개발환경 구성 가이드"),
+    "운영매뉴얼.md":         ("Lon — AI 사업제안서 자동 생성기", "운영 매뉴얼 (개발환경/사용법/기동테스트)"),
 }
 
 KO_FONT = "맑은 고딕"

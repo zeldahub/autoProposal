@@ -21,13 +21,27 @@ api.interceptors.response.use(
     const errBody = err.response?.data?.error;
 
     if (status === 401) {
+      const url = String(config?.url || "");
+      // 로그인/회원가입 자체는 401 응답이 자연스러우므로 (잘못된 비번 등)
+      // 글로벌 로그아웃/리다이렉트 처리에서 제외한다.
+      const isAuthEndpoint = url.includes("/auth/login") || url.includes("/auth/register");
+      if (isAuthEndpoint) {
+        return Promise.reject(err);
+      }
+
+      // 이미 로그인 페이지면 토큰 정리만 하고 리다이렉트 생략
+      const onLoginPage = location.pathname.startsWith("/login");
+      // 토큰 없이 호출한 경우 (헤더 미부착) — race condition 일 가능성 → 조용히 reject
+      const hadToken = !!localStorage.getItem("lon.token");
+
       localStorage.removeItem("lon.token");
       localStorage.removeItem("lon.user");
       delete api.defaults.headers.common["Authorization"];
-      if (!location.pathname.startsWith("/login")) {
-        // /auth/me 등의 자동 호출이 401일 수 있어 토스트는 이때 생략
-        const isAuthCheck = (config?.url || "").includes("/auth/me");
-        if (!isAuthCheck) {
+
+      if (!onLoginPage) {
+        // /auth/me 등 자동 헬스체크는 토스트 생략
+        const isAuthCheck = url.includes("/auth/me");
+        if (hadToken && !isAuthCheck && !silent) {
           toastBus.warning("세션이 만료되었습니다. 다시 로그인하세요.");
         }
         location.assign(`/login?redirect=${encodeURIComponent(location.pathname)}`);
