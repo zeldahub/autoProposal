@@ -1,0 +1,11 @@
+.venv
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+tests/out_*.pptx
+tests/out_*.xlsx
+.env
+.env.local
+.git
+README.md

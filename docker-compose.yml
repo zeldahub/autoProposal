@@ -1,0 +1,92 @@
+# Lon — All-in-one development/staging stack
+# 사용:
+#   docker compose up --build -d
+#   docker compose logs -f api
+#   docker compose down -v   # 볼륨까지 정리 (주의: DB 데이터 사라짐)
+services:
+  mariadb:
+    image: mariadb:11.4
+    container_name: lon-mariadb
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:-rootpw_change_me}
+      MARIADB_DATABASE: lon
+      MARIADB_USER: lon_app
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD:-CHANGE_ME_LON_2026}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "${MARIADB_PORT:-3306}:3306"
+    volumes:
+      - mariadb-data:/var/lib/mysql
+      - ./db/mariadb/migration:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  mongo:
+    image: mongo:8.0
+    container_name: lon-mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-root}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-rootpw_change_me}
+      MONGO_INITDB_DATABASE: lon
+      LON_MONGO_USER: lon_app
+      LON_MONGO_PASS: ${MONGO_PASSWORD:-CHANGE_ME_LON_2026}
+    ports:
+      - "${MONGO_PORT:-27017}:27017"
+    volumes:
+      - mongo-data:/data/db
+      - ./infra/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: lon-api
+    restart: unless-stopped
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+    environment:
+      APP_ENV: docker
+      APP_PORT: 8089
+      APP_BASE_URL: http://localhost:${WEB_PORT:-8080}
+      APP_CORS_ORIGINS: http://localhost:${WEB_PORT:-8080},http://web
+      MARIADB_URL: mysql+pymysql://lon_app:${MARIADB_PASSWORD:-CHANGE_ME_LON_2026}@mariadb:3306/lon?charset=utf8mb4
+      MONGO_URL: mongodb://lon_app:${MONGO_PASSWORD:-CHANGE_ME_LON_2026}@mongo:27017/lon?authSource=lon
+      JWT_SECRET: ${JWT_SECRET:-dev-only-not-for-prod-32chars-please-change}
+      AES_MASTER_KEY_B64: ${AES_MASTER_KEY_B64:-}
+      WORKSPACE_DIR: /data/workspace
+      JOBS_ENABLED: "true"
+    volumes:
+      - workspace-data:/data/workspace
+    ports:
+      - "${API_PORT:-8089}:8089"
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    container_name: lon-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "${WEB_PORT:-8080}:80"
+
+volumes:
+  mariadb-data:
+  mongo-data:
+  workspace-data:

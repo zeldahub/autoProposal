@@ -1,0 +1,43 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# Node / FE
+node_modules/
+.next/
+dist/
+.vite/
+*.local
+pnpm-debug.log*
+npm-debug.log*
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Workspace (사용자 첨부/산출물)
+workspace/
+attachments/
+outputs/
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Logs
+*.log
+
+# Docs 출력물은 추적 (산출물)
+!docs/*.docx
+!docs/*.pptx
+!docs/*.xlsx
